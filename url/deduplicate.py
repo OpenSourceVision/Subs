@@ -10,4 +10,3 @@ with open(input_path, 'w', encoding='utf-8') as f:
         f.write(url + '\n')
 
 print(f"去重后的网址已直接写回 {input_path}")
-print(f"去重后的网址已写入 {output_path}")
