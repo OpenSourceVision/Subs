@@ -12,9 +12,26 @@ import re
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# 确保输出目录存在
+# 确保输出目录存在且可写，否则切换到当前目录
 OUTPUT_DIR = 'out-1'
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+try:
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    test_file = os.path.join(OUTPUT_DIR, '.write_test')
+    with open(test_file, 'w') as f:
+        f.write('test')
+    os.remove(test_file)
+except Exception as e:
+    logger.warning(f"输出目录不可写({OUTPUT_DIR})，切换到当前目录: {str(e)}")
+    OUTPUT_DIR = os.path.join(os.getcwd(), 'out-1')
+    try:
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        test_file = os.path.join(OUTPUT_DIR, '.write_test')
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+    except Exception as e2:
+        logger.error(f"当前目录也不可写，节点将输出到标准输出: {str(e2)}")
+        OUTPUT_DIR = None
 
 # 协议类型列表
 PROTOCOLS = ['vless', 'vmess', 'ss', 'ssr', 'hy', 'hy2', 'hysteria', 'hysteria2', 'trojan']
@@ -619,19 +636,25 @@ class NodeParser:
             else:
                 logger.debug(f"无法识别协议的节点: {node[:50]}...")
         
-        # 保存到文件
+        # 保存到文件或输出到标准输出
         total_saved = 0
         for protocol, nodes in self.protocol_nodes.items():
             if nodes:
-                output_file = os.path.join(OUTPUT_DIR, f"{protocol}.txt")
-                try:
-                    with open(output_file, 'w', encoding='utf-8') as f:
-                        for node in nodes:
-                            f.write(f"{node}\n")
-                    logger.info(f"已保存 {len(nodes)} 个 {protocol.upper()} 节点到 {output_file}")
+                if OUTPUT_DIR:
+                    output_file = os.path.join(OUTPUT_DIR, f"{protocol}.txt")
+                    try:
+                        with open(output_file, 'w', encoding='utf-8') as f:
+                            for node in nodes:
+                                f.write(f"{node}\n")
+                        logger.info(f"已保存 {len(nodes)} 个 {protocol.upper()} 节点到 {output_file}")
+                        total_saved += len(nodes)
+                    except Exception as e:
+                        logger.error(f"保存 {protocol} 节点失败: {str(e)}")
+                else:
+                    logger.warning(f"无法写入文件，输出 {protocol.upper()} 节点到标准输出：")
+                    for node in nodes:
+                        print(node)
                     total_saved += len(nodes)
-                except Exception as e:
-                    logger.error(f"保存 {protocol} 节点失败: {str(e)}")
         
         logger.info(f"总共保存了 {total_saved} 个节点")
         
