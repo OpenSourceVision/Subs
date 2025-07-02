@@ -8,8 +8,25 @@ from urllib.parse import urlparse, parse_qs, quote, unquote
 input_dir = 'out-2'
 output_dir = 'out-3'
 
-# 确保输出目录存在
-os.makedirs(output_dir, exist_ok=True)
+# 检查输出目录写权限，否则切换到当前目录
+try:
+    os.makedirs(output_dir, exist_ok=True)
+    test_file = os.path.join(output_dir, '.write_test')
+    with open(test_file, 'w') as f:
+        f.write('test')
+    os.remove(test_file)
+except Exception as e:
+    print(f"输出目录不可写({output_dir})，切换到当前目录: {str(e)}")
+    output_dir = os.path.join(os.getcwd(), 'out-3')
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+        test_file = os.path.join(output_dir, '.write_test')
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+    except Exception as e2:
+        print(f"当前目录也不可写，节点将输出到标准输出: {str(e2)}")
+        output_dir = None
 
 # 协议类型列表，拆分 hysteria2 和 hysteria
 protocols = ['vless', 'trojan', 'ss', 'hysteria2', 'hysteria']
@@ -199,12 +216,17 @@ def main():
             renamed_node = rename_node(node, protocol, i)
             renamed_nodes.append(renamed_node)
         
-        # 输出到文件
-        output_file = os.path.join(output_dir, f"{protocol}.txt")
-        with open(output_file, 'w', encoding='utf-8') as f:
+        # 输出到文件或标准输出
+        if output_dir:
+            output_file = os.path.join(output_dir, f"{protocol}.txt")
+            with open(output_file, 'w', encoding='utf-8') as f:
+                for node in renamed_nodes:
+                    f.write(f"{node}\n")
+            print(f"  已将重命名后的节点保存到 {output_file}")
+        else:
+            print(f"  无法写入文件，输出 {protocol} 节点到标准输出：")
             for node in renamed_nodes:
-                f.write(f"{node}\n")
-        print(f"  已将重命名后的节点保存到 {output_file}")
+                print(node)
 
 if __name__ == "__main__":
     main()
